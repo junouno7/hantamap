@@ -1,0 +1,11 @@
+body, html { margin: 0; padding: 0; height: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+.container { display: flex; height: 100vh; }
+#map { height: 100%; width: 80%; background-color: #f0f0f0; }
+#controls { width: 20%; padding: 12px; box-shadow: 2px 0 5px rgba(0,0,0,0.08); overflow-y: auto; }
+#controls h2 { margin: 0 0 10px; font-weight: 600; font-size: 16px; }
+#searchInput { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; }
+#searchResults { padding-left: 0; margin: 0; }
+#searchResults li { list-style-type: none; padding: 8px; cursor: pointer; border-radius: 6px; }
+#searchResults li:hover, #searchResults li.active { background-color: #e9f2ff; }
+.note { color: #666; line-height: 1.3; }
+

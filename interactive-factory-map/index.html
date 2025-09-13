@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AGV Factory Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="container">
+        <div id="controls">
+            <h2>Find RFID Node</h2>
+            <input type="text" id="searchInput" placeholder="Search by node name..." autocomplete="off" />
+            <ul id="searchResults"></ul>
+            <div class="note">
+                <small>Tip: If nodes don't appear when opening this file directly, serve the folder via a local server and open <code>http://localhost:5500</code>.</small>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js" defer></script>
+</body>
+</html>
+

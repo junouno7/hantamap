@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Map Node Extractor Tool</title>
+    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        /* Fallback if style.css fails to load */
+        body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        .instructions { padding: 0 20px; border-bottom: 1px solid #ccc; }
+        .container { display: flex; flex-grow: 1; overflow: hidden; }
+        #map-container { flex-basis: 75%; overflow: auto; border-right: 1px solid #ccc; position: relative; }
+        #factoryMap { cursor: crosshair; max-width: none; display: block; }
+        .click-marker { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #ff4500; border: 2px solid white; transform: translate(-50%, -50%); pointer-events: none; }
+        .output-container { flex-basis: 25%; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; }
+        #output { background-color: #f4f4f4; border: 1px solid #ddd; padding: 10px; white-space: pre-wrap; flex-grow: 1; }
+        .buttons { display: flex; gap: 8px; margin-bottom: 10px; }
+        button { padding: 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        button:active { background-color: #0056b3; }
+    </style>
+    
+</head>
+<body>
+    <div class="instructions">
+        <h1>Node Extractor Tool</h1>
+        <p>Place your map image as <code>factory-map.png</code> in this folder. Click each RFID node on the map below. Enter the node's name/ID when prompted. The generated JSON appears on the right. Use "Copy JSON" or "Download JSON" when done.</p>
+    </div>
+    <div class="container">
+        <div id="map-container">
+            <img src="factory-map.png" id="factoryMap" alt="Factory Map">
+        </div>
+        <div class="output-container">
+            <h2>Generated JSON</h2>
+            <div class="buttons">
+                <button id="copyButton">Copy JSON</button>
+                <button id="downloadButton">Download JSON</button>
+                <button id="undoButton" title="Remove the last added node">Undo</button>
+                <button id="clearButton" title="Clear all nodes">Clear</button>
+            </div>
+            <pre id="output"></pre>
+        </div>
+    </div>
+    <script src="extractor.js"></script>
+</body>
+</html>
+

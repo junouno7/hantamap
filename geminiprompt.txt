@@ -1,0 +1,334 @@
+Of course. Here is a complete, linear, step-by-step guide to take you from your PDF map to a fully functional, interactive web application.
+
+This guide is divided into two main phases:
+
+Phase 1: Building and Using a Tool to Extract Node Data from Your Map.
+
+Phase 2: Building the Final Interactive Map Application with the Extracted Data.
+
+Phase 1: Extracting Node Data from Your Map
+
+In this phase, we will create a simple web-based tool. This tool will let you load your map image, click on each RFID node, label it, and automatically generate the coordinate data required for the final application.
+
+Step 1: Prepare Your Assets
+
+Export the Map Image: Open your PDF file in a PDF viewer or image editor. Export or save the map as a high-resolution PNG image. Name it exactly factory-map.png.
+
+Create the Extractor Project Folder: On your computer, create a new folder named map-data-extractor.
+
+Place the Map Image: Move the factory-map.png you just created into this folder.
+
+Create Tool Files: Inside the map-data-extractor folder, create three new, empty text files:
+
+extractor.html
+
+style.css
+
+extractor.js
+
+Your folder structure should now look like this:
+
+code
+Code
+download
+content_copy
+expand_less
+
+map-data-extractor/
+├── factory-map.png
+├── extractor.html
+├── style.css
+└── extractor.js
+Step 2: Build the Data Extractor Tool
+
+Copy and paste the following code blocks into their corresponding files.
+
+extractor.html (The tool's user interface)
+
+code
+Html
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Map Node Extractor Tool</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="instructions">
+        <h1>Node Extractor Tool</h1>
+        <p>Click on each RFID node on the map below. A prompt will ask for the node's name or number. The generated JSON will appear on the right. When finished, click the "Copy JSON" button.</p>
+    </div>
+    <div class="container">
+        <div id="map-container">
+            <img src="factory-map.png" id="factoryMap" alt="Factory Map">
+        </div>
+        <div class="output-container">
+            <h2>Generated JSON</h2>
+            <button id="copyButton">Copy JSON</button>
+            <pre id="output"></pre>
+        </div>
+    </div>
+    <script src="extractor.js"></script>
+</body>
+</html>
+
+style.css (The tool's styling)
+
+code
+CSS
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+.instructions { padding: 0 20px; border-bottom: 1px solid #ccc; }
+.container { display: flex; flex-grow: 1; overflow: hidden; }
+#map-container { flex-basis: 75%; overflow: auto; border-right: 1px solid #ccc; }
+#factoryMap { cursor: crosshair; }
+.output-container { flex-basis: 25%; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; }
+#output { background-color: #f4f4f4; border: 1px solid #ddd; padding: 10px; white-space: pre-wrap; flex-grow: 1; }
+#copyButton { padding: 10px; margin-bottom: 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+#copyButton:active { background-color: #0056b3; }
+
+extractor.js (The tool's functionality)
+
+code
+JavaScript
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+document.addEventListener('DOMContentLoaded', () => {
+    const mapImage = document.getElementById('factoryMap');
+    const outputArea = document.getElementById('output');
+    const copyButton = document.getElementById('copyButton');
+    let nodesData = [];
+
+    mapImage.addEventListener('click', (event) => {
+        const x = Math.round(event.offsetX);
+        const y = Math.round(event.offsetY);
+        const nodeName = prompt(`Enter name/ID for the node at coordinates (${x}, ${y}):`);
+
+        if (nodeName) {
+            const newNode = {
+                id: `node_${nodesData.length + 1}`,
+                name: nodeName,
+                x: x,
+                y: y,
+                description: ""
+            };
+            nodesData.push(newNode);
+            updateOutput();
+        }
+    });
+
+    function updateOutput() {
+        outputArea.textContent = JSON.stringify(nodesData, null, 2);
+    }
+
+    copyButton.addEventListener('click', () => {
+        navigator.clipboard.writeText(outputArea.textContent).then(() => {
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => { copyButton.textContent = 'Copy JSON'; }, 2000);
+        }).catch(err => {
+            alert('Could not copy text. Please copy it manually.');
+        });
+    });
+});
+Step 3: Use the Tool to Generate Your nodes.json File
+
+Open the Tool: In your file explorer, find and open the extractor.html file with a web browser (e.g., Chrome, Firefox).
+
+Click and Label: Your factory map will appear on the left.
+
+Click directly on the center of an RFID node on the map.
+
+A pop-up box will appear. Type in the node's name or ID (e.g., "H2210 BTM Out 1") and press OK.
+
+The corresponding JSON data for that node will appear in the output box on the right.
+
+Repeat: Do this for every single RFID node on your map. The JSON output will grow as you add more nodes.
+
+Copy and Save the Data:
+
+Once you have labeled all nodes, click the blue "Copy JSON" button.
+
+Create a new, empty text file. Paste the copied JSON data into this file.
+
+Save this file as nodes.json.
+
+You have now successfully completed the data extraction phase. You can close the extractor tool and set the map-data-extractor folder aside.
+
+Phase 2: Building the Interactive Map Application
+
+Now we will use the factory-map.png and nodes.json files to build the final web application.
+
+Step 4: Set Up the Final Project
+
+Create the Project Folder: Create a new folder named interactive-factory-map.
+
+Move Your Assets: Move the following two files into this new folder:
+
+factory-map.png
+
+nodes.json (the file you just created)
+
+Create Application Files: Inside the interactive-factory-map folder, create three new, empty text files:
+
+index.html
+
+style.css
+
+script.js
+
+The final project folder structure should be:
+
+code
+Code
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+interactive-factory-map/
+├── factory-map.png
+├── nodes.json
+├── index.html
+├── style.css
+└── script.js
+Step 5: Build the Interactive Map Application
+
+Copy and paste the following code blocks into their corresponding files in the interactive-factory-map folder.
+
+index.html (The main page for your app)
+
+code
+Html
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AGV Factory Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="container">
+        <div id="controls">
+            <h2>Find RFID Node</h2>
+            <input type="text" id="searchInput" placeholder="Search by node name...">
+            <ul id="searchResults"></ul>
+        </div>
+        <div id="map"></div>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
+style.css (The app's styling)
+
+code
+CSS
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+.container { display: flex; height: 100vh; }
+#map { height: 100%; width: 80%; background-color: #f0f0f0; }
+#controls { width: 20%; padding: 10px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); overflow-y: auto; }
+#searchInput { width: 95%; padding: 8px; margin-bottom: 10px; }
+#searchResults { padding-left: 0; }
+#searchResults li { list-style-type: none; padding: 8px; cursor: pointer; }
+#searchResults li:hover { background-color: #e9e9e9; }
+
+script.js (The app's interactive logic)
+
+code
+JavaScript
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+document.addEventListener('DOMContentLoaded', () => {
+    // --- IMPORTANT ---
+    // Find the dimensions of your factory-map.png file and update these values.
+    const mapWidth = 4000;  // <-- UPDATE THIS to your image's width in pixels
+    const mapHeight = 2500; // <-- UPDATE THIS to your image's height in pixels
+
+    const map = L.map('map', {
+        crs: L.CRS.Simple,
+        minZoom: -3,
+    });
+
+    const bounds = [[0, 0], [mapHeight, mapWidth]];
+    L.imageOverlay('factory-map.png', bounds).addTo(map);
+    map.fitBounds(bounds);
+
+    let allNodes = [];
+    let nodeMarkers = [];
+
+    fetch('nodes.json')
+        .then(response => response.json())
+        .then(data => {
+            allNodes = data;
+            data.forEach(node => {
+                const marker = L.circleMarker([node.y, node.x], {
+                    radius: 7,
+                    color: '#ff4500',
+                    fillOpacity: 0.8,
+                }).addTo(map);
+                
+                marker.bindPopup(`<b>${node.name}</b>`);
+                nodeMarkers.push({ node: node, marker: marker });
+            });
+        });
+
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+
+    searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        searchResults.innerHTML = '';
+
+        if (searchTerm.length === 0) return;
+
+        const filteredNodes = nodeMarkers.filter(item =>
+            item.node.name.toLowerCase().includes(searchTerm)
+        );
+
+        filteredNodes.forEach(item => {
+            const li = document.createElement('li');
+            li.innerText = item.node.name;
+            li.onclick = () => {
+                map.setView([item.node.y, item.node.x], 0);
+                item.marker.openPopup();
+                searchInput.value = '';
+                searchResults.innerHTML = '';
+            };
+            searchResults.appendChild(li);
+        });
+    });
+});
+Step 6: Final Configuration and Launch
+
+Update Image Dimensions: Before you launch, find the pixel dimensions of your factory-map.png. Right-click the file and check its properties or open it in an image viewer. Update the mapWidth and mapHeight variables at the top of your script.js file with these values. This is a critical step for the coordinates to be accurate.
+
+Launch the Application: Open the index.html file from the interactive-factory-map folder in your web browser.
+
+You should now see your interactive factory map. You can pan, zoom, click on nodes to see their names, and use the search bar on the left to find any node you labeled.

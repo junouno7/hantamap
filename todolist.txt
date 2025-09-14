@@ -1,1 +1,7 @@
-6017 CS15 6012 CS16 / description fill out 
+mobile clicknode exitsearch exit popup, search move more gracefully  
+
+
+ when using this app in the mobile device view in chrome, after clicking the zoom in out button or the reset button,
+ the button remains highlighted blue instead of returning back to normal as soon as I let go. Also, clicking on the nodes doesn't
+  bring up the popup information.
+  does touch mode normally not work in google chrome mobile device view? or is there something wrong with the app

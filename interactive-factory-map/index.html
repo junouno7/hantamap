@@ -1,26 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AGV Factory Map</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hanta Map</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231976d2'/><rect x='10' y='10' width='80' height='80' fill='none' stroke='white' stroke-width='3'/><circle cx='30' cy='30' r='4' fill='%23ff6f00'/><circle cx='50' cy='30' r='4' fill='%23ff6f00'/><circle cx='70' cy='30' r='4' fill='%23ff6f00'/><circle cx='30' cy='50' r='4' fill='%23ff6f00'/><circle cx='50' cy='50' r='4' fill='%23ff6f00'/><circle cx='70' cy='50' r='4' fill='%23ff6f00'/><circle cx='30' cy='70' r='4' fill='%23ff6f00'/><circle cx='50' cy='70' r='4' fill='%23ff6f00'/><circle cx='70' cy='70' r='4' fill='%23ff6f00'/><text x='50' y='95' text-anchor='middle' fill='white' font-size='8' font-weight='bold'>MAP</text></svg>">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div id="controls">
-            <h2>Find RFID Node</h2>
-            <input type="text" id="searchInput" placeholder="Search by node name..." autocomplete="off" />
-            <ul id="searchResults"></ul>
-            <div class="note">
-                <small>Tip: If nodes don't appear when opening this file directly, serve the folder via a local server and open <code>http://localhost:5500</code>.</small>
+    <!-- Header with logo, title and search -->
+    <header class="header">
+        <div class="header-left">
+            <img src="hankook.webp" alt="Hankook Logo" class="logo">
+            <h1 class="title">한국타이어 금산공장 <span class="version">(8/26 map ver.)</span></h1>
+        </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="노드 검색 (ex. 6005, 4S IN...)" class="search-input">
+            <button id="clearSearch" class="clear-search-btn" type="button" style="display: none;">&times;</button>
+            <div id="searchResults" class="search-results"></div>
+        </div>
+    </header>
+
+    <!-- Map container -->
+    <div class="map-container" id="mapContainer">
+        <canvas id="mapCanvas"></canvas>
+        <!-- Zoom controls -->
+        <div class="controls">
+            <button id="zoomIn" class="control-btn">+</button>
+            <button id="zoomOut" class="control-btn">−</button>
+            <button id="resetView" class="control-btn">⟲</button>
+        </div>
+        <!-- Combined legend -->
+        <div class="legend">
+            <h4>Node Types</h4>
+            <div class="node-colors">
+                <div class="color-item"><span class="dot dot-green"></span> Green - Road</div>
+                <div class="color-item"><span class="dot dot-red"></span> Red - Docking Point</div>
+                <div class="color-item"><span class="dot dot-yellow"></span> Yellow - Charging Station</div>
+            </div>
+            
+            <h4>Keyboard Shortcuts</h4>
+            <div class="shortcuts-grid">
+                <div class="shortcut"><kbd>/</kbd> Search</div>
+                <div class="shortcut"><kbd>+</kbd> Zoom in</div>
+                <div class="shortcut"><kbd>-</kbd> Zoom out</div>
+                <div class="shortcut"><kbd>0</kbd> Reset Zoom</div>
+                <div class="shortcut"><kbd>Esc</kbd> Close</div>
             </div>
         </div>
-        <div id="map"></div>
+        <!-- Node info popup -->
+        <div id="nodeInfo" class="node-info"></div>
     </div>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="script.js" defer></script>
+
+    <!-- Loading indicator -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loader"></div>
+        <p>Loading map...</p>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
-

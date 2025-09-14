@@ -1,4 +1,4 @@
-mobile clicknode exitsearch exit popup, search move more gracefully  
+mobile clicknode exitsearch exit popup, search move more gracefully, change favicon
 
 
  when using this app in the mobile device view in chrome, after clicking the zoom in out button or the reset button,

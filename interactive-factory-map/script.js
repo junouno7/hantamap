@@ -450,8 +450,10 @@ function handleTouchMove(e) {
         const deltaX = touch.clientX - lastX;
         const deltaY = touch.clientY - lastY;
         
-        offsetX += deltaX;
-        offsetY += deltaY;
+        // Increase pan sensitivity for mobile (1.3x multiplier)
+        const panSensitivity = 1.3;
+        offsetX += deltaX * panSensitivity;
+        offsetY += deltaY * panSensitivity;
         
         // Apply boundary constraints
         constrainPanning();
@@ -491,8 +493,8 @@ function handleTouchMove(e) {
             const centerY = (touch1.clientY + touch2.clientY) / 2;
             
             // Calculate zoom delta with reduced sensitivity for touch
-            // Increase pinch sensitivity by ~30%
-            const zoomDelta = (distanceRatio - 1) * 0.42;
+            // Lower pinch sensitivity for better control
+            const zoomDelta = (distanceRatio - 1) * 0.33;
             zoom(zoomDelta, centerX, centerY);
         }
         

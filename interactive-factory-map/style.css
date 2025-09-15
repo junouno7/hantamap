@@ -84,7 +84,7 @@ body {
 .search-input {
     width: 100%;
     padding: 0.75rem 2.5rem 0.75rem 1rem; /* Add right padding for clear button */
-    background: rgba(18, 18, 18, 0.75); /* Match legend/zoom buttons */
+    background: rgba(18, 18, 18, 0.55); /* Match legend/zoom buttons */
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     color: var(--text-primary);
@@ -97,7 +97,7 @@ body {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
-    background: rgba(18, 18, 18, 0.75); /* Keep same background on focus to match legend/zoom buttons */
+    background: rgba(18, 18, 18, 0.45); /* Keep same background on focus to match legend/zoom buttons */
 }
 
 .clear-search-btn {
@@ -118,13 +118,23 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    z-index: 10;
+    z-index: 1100; /* ensure above dropdown on mobile */
+    -webkit-tap-highlight-color: transparent;
 }
 
 .clear-search-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.9);
 }
+
+.clear-search-btn:focus,
+.clear-search-btn:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Show clear button when container has .show-clear (JS toggles) */
+/* Removed show-clear opacity gating to match desktop behavior */
 
 .search-input::placeholder {
     color: #b0b0b0;
@@ -136,7 +146,7 @@ body {
     left: 0;
     right: 0;
     margin-top: 0.5rem;
-    background: rgba(18, 18, 18, 0.75); /* Match legend/zoom buttons */
+    background: rgba(18, 18, 18, 0.55); /* Match legend/zoom buttons */
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5); /* Match legend/zoom buttons shadow */
     max-height: 300px;
@@ -159,7 +169,7 @@ body {
 
 .search-result-item:hover,
 .search-result-item.selected {
-    background: var(--primary-color);
+    background: rgba(25, 118, 210, 0.6);
 }
 
 .search-result-item strong {
@@ -210,7 +220,7 @@ body {
     position: fixed;
     bottom: 2rem;
     left: 2rem;
-    background: rgba(18, 18, 18, 0.75); /* Match zoom buttons transparency exactly */
+    background: rgba(18, 18, 18, 0.5); /* Match zoom buttons transparency exactly */
     border-radius: 8px;
     padding: 0.75rem 1rem;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5); /* Match zoom buttons shadow */
@@ -294,7 +304,7 @@ body {
 .control-btn {
     width: 48px;
     height: 48px;
-    background: rgba(18, 18, 18, 0.75);
+    background: rgba(18, 18, 18, 0.6);
     border: none;
     border-radius: 50%;
     color: var(--text-primary);
@@ -306,11 +316,30 @@ body {
     align-items: center;
     justify-content: center;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.control-btn:hover {
+.control-btn:focus,
+.control-btn:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Press feedback for all devices (JS toggles .pressed) */
+.control-btn.pressed {
     background: var(--primary-color);
-    transform: scale(1.1);
+}
+
+/* Slight fade-out when pressed state is removed */
+.control-btn {
+    transition: background 0.15s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .control-btn:hover {
+        background: var(--primary-color);
+        transform: scale(1.1);
+    }
 }
 
 .control-btn:active {
@@ -329,7 +358,7 @@ body {
     z-index: 200;
     min-width: unset;
     max-width: 60vw;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 2px solid rgb(18, 161, 204);
     backdrop-filter: blur(6px);
     display: inline-block;
 }
@@ -398,12 +427,12 @@ body {
 }
 
 .search-results::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
+    background: rgba(25, 118, 210, 0.8);
     border-radius: 3px;
 }
 
 .search-results::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-dark);
+    background: rgba(21, 101, 192, 0.8);
 }
 
 /* Mobile responsiveness */
@@ -434,7 +463,7 @@ body {
     }
     
     .search-container {
-        position: static;
+        position: relative; /* anchor clear button on mobile */
         transform: none;
         left: auto;
         top: auto;
@@ -492,7 +521,7 @@ body {
     }
     
     .search-container {
-        position: static;
+        position: relative; /* ensure clear button anchors within the container on small screens */
         transform: none;
         left: auto;
         top: auto;

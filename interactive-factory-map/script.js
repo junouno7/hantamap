@@ -48,6 +48,9 @@ let dragStartX = 0;
 let dragStartY = 0;
 let dragMoved = false;
 let suppressNextClick = false;
+let isInteractingWithResults = false; // prevents premature blur/hide while interacting with results
+let popupPanAccum = 0; // cumulative desktop pan distance while popup is open
+let popupVisible = false;
 
 // Cached base-scale map for smooth panning when zoomed out
 let baseScaleCanvas = null; // kept for backward compatibility (now covered by mipCanvases)
@@ -56,6 +59,10 @@ let mipCanvases = []; // array of { scale: number, canvas: HTMLCanvasElement }
 // Touch handling variables
 let lastTouchDistance = 0;
 let isZooming = false;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTime = 0;
+let touchMoved = false;
 
 // Performance throttling variables
 let lastWheelTime = 0;
@@ -237,6 +244,21 @@ function setupEventListeners() {
     document.getElementById('zoomIn').addEventListener('click', () => zoomByStep(ZOOM_SPEED));
     document.getElementById('zoomOut').addEventListener('click', () => zoomByStep(-ZOOM_SPEED));
     document.getElementById('resetView').addEventListener('click', resetView);
+    // Prevent sticky focus/hover on mobile by blurring on release
+    [document.getElementById('zoomIn'), document.getElementById('zoomOut'), document.getElementById('resetView')]
+        .forEach(btn => {
+            if (!btn) return;
+            const blur = () => { btn.blur(); btn.classList.remove('pressed'); };
+            const press = () => btn.classList.add('pressed');
+            btn.addEventListener('pointerdown', press);
+            btn.addEventListener('mousedown', press);
+            btn.addEventListener('touchstart', press, { passive: true });
+            btn.addEventListener('pointerup', blur);
+            btn.addEventListener('mouseup', blur);
+            btn.addEventListener('touchend', blur);
+            btn.addEventListener('pointercancel', blur);
+            btn.addEventListener('touchcancel', blur);
+        });
     
     // Search functionality
     const searchInput = document.getElementById('searchInput');
@@ -247,30 +269,42 @@ function setupEventListeners() {
         // Show/hide clear button based on input content
         toggleClearButton();
     });
+    // Ensure clear button also appears on mobile when focusing the input
     searchInput.addEventListener('focus', () => {
+        toggleClearButton();
         if (searchInput.value.trim()) handleSearch();
     });
     searchInput.addEventListener('blur', () => {
-        // Hide search results after a short delay to allow clicking
+        // Hide search results after a short delay to allow clicking/long-press select
         setTimeout(() => {
-            document.getElementById('searchResults').style.display = 'none';
-        }, 200);
+            if (!isInteractingWithResults) {
+                document.getElementById('searchResults').style.display = 'none';
+            }
+        }, 120);
     });
     
     // Clear search button functionality
     clearSearchBtn.addEventListener('click', () => {
         clearSearch();
     });
+    // Prevent sticky focus/outline on mobile for clear button
+    const blurClear = () => clearSearchBtn.blur();
+    clearSearchBtn.addEventListener('pointerup', blurClear);
+    clearSearchBtn.addEventListener('touchend', blurClear);
+    clearSearchBtn.addEventListener('mouseup', blurClear);
     // Blur search when clicking outside the search container/results
-    document.addEventListener('mousedown', (e) => {
+    const blurIfOutside = (e) => {
         const container = document.querySelector('.search-container');
         if (!container) return;
-        if (!container.contains(e.target)) {
+        const insideResults = e.target && (e.target.closest && e.target.closest('#searchResults'));
+        if (!container.contains(e.target) && !insideResults) {
             searchInput.blur();
             const resultsContainer = document.getElementById('searchResults');
             if (resultsContainer) resultsContainer.style.display = 'none';
         }
-    });
+    };
+    document.addEventListener('mousedown', blurIfOutside);
+    document.addEventListener('touchstart', blurIfOutside, { passive: true });
     
     // Keyboard shortcuts
     document.addEventListener('keydown', handleKeyDown);
@@ -351,19 +385,14 @@ function handleMouseMove(e) {
     // Apply boundary constraints
     constrainPanning();
     
-    // Close popup if panned farther than threshold since popup opened
-    if (popupOpenOffsetX != null && popupOpenOffsetY != null) {
-        const dx = offsetX - popupOpenOffsetX;
-        const dy = offsetY - popupOpenOffsetY;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 260) {
-            // keep node selected but close popup
+    // Close popup when cumulative pan distance exceeds threshold (desktop)
+    if (popupVisible) {
+        popupPanAccum += Math.hypot(deltaX, deltaY);
+        if (popupPanAccum > 260) {
             const keepSelected = selectedNode;
             hideNodeInfo();
             selectedNode = keepSelected;
-            // prevent repeated checks
-            popupOpenOffsetX = null;
-            popupOpenOffsetY = null;
+            popupPanAccum = 0;
         }
     }
     
@@ -395,6 +424,10 @@ function handleTouchStart(e) {
         isZooming = false;
         lastX = touch.clientX;
         lastY = touch.clientY;
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        touchMoved = false;
     } else if (e.touches.length === 2) {
         // Two touches - start zooming
         isDragging = false;
@@ -425,7 +458,23 @@ function handleTouchMove(e) {
         
         lastX = touch.clientX;
         lastY = touch.clientY;
+        const moveDist = Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY);
+        if (moveDist > 8) touchMoved = true;
         
+        // Close popup if panned farther than threshold since popup opened (mirror mouse logic)
+        if (popupOpenOffsetX != null && popupOpenOffsetY != null) {
+            const dx = offsetX - popupOpenOffsetX;
+            const dy = offsetY - popupOpenOffsetY;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 260) {
+                const keepSelected = selectedNode;
+                hideNodeInfo();
+                selectedNode = keepSelected;
+                popupOpenOffsetX = null;
+                popupOpenOffsetY = null;
+            }
+        }
+
         throttledRender();
     } else if (e.touches.length === 2 && isZooming) {
         // Pinch to zoom
@@ -442,7 +491,8 @@ function handleTouchMove(e) {
             const centerY = (touch1.clientY + touch2.clientY) / 2;
             
             // Calculate zoom delta with reduced sensitivity for touch
-            const zoomDelta = (distanceRatio - 1) * 0.3;
+            // Increase pinch sensitivity by ~30%
+            const zoomDelta = (distanceRatio - 1) * 0.42;
             zoom(zoomDelta, centerX, centerY);
         }
         
@@ -452,11 +502,53 @@ function handleTouchMove(e) {
 
 function handleTouchEnd(e) {
     e.preventDefault();
+    const wasZooming = isZooming;
     
     if (e.touches.length === 0) {
         isDragging = false;
         isZooming = false;
         lastTouchDistance = 0;
+
+        // Detect quick tap (not a drag, not a pinch) and treat like a click
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const duration = now - touchStartTime;
+        if (!wasZooming && !touchMoved && duration < 300 && e.changedTouches && e.changedTouches.length) {
+            const t = e.changedTouches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = t.clientX - rect.left;
+            const y = t.clientY - rect.top;
+            // Convert to map coordinates
+            const mapX = (x - offsetX) / scale;
+            const mapY = (y - offsetY) / scale;
+            // Find tapped node (same logic as handleClick)
+            const clickRadius = Math.max(NODE_RADIUS, 15) / scale;
+            const clickedNode = nodes.find(node => {
+                const flippedY = mapImage.naturalHeight - node.y;
+                const distance = Math.sqrt(
+                    Math.pow(node.x - mapX, 2) +
+                    Math.pow(flippedY - mapY, 2)
+                );
+                return distance < clickRadius;
+            });
+            if (clickedNode) {
+                showNodeInfo(clickedNode, t.clientX, t.clientY);
+                selectedNode = clickedNode;
+                beaconNodeId = null;
+                highlightedNodes = [];
+                startAnimationLoop();
+                throttledRender();
+            } else {
+                hideNodeInfo();
+                selectedNode = null;
+                beaconNodeId = null;
+                highlightedNodes = [];
+                stopAnimationLoop();
+                throttledRender();
+            }
+            // Suppress any synthetic click that may follow
+            suppressNextClick = true;
+            setTimeout(() => { suppressNextClick = false; }, 0);
+        }
     } else if (e.touches.length === 1) {
         // Switch back to dragging mode
         isDragging = true;
@@ -758,6 +850,35 @@ function handleSearch() {
             `;
             item.dataset.index = String(index);
             item.addEventListener('click', () => selectNode(node));
+            // Desktop long-press support: keep dropdown open during press, select on mouseup if not moved far
+            let pressMoved = false;
+            let pressStartX = 0;
+            let pressStartY = 0;
+            const pressMoveThreshold = 6;
+            item.addEventListener('mousedown', (ev) => {
+                isInteractingWithResults = true;
+                pressMoved = false;
+                pressStartX = ev.clientX;
+                pressStartY = ev.clientY;
+            });
+            item.addEventListener('mousemove', (ev) => {
+                if (isInteractingWithResults) {
+                    const d = Math.hypot(ev.clientX - pressStartX, ev.clientY - pressStartY);
+                    if (d > pressMoveThreshold) pressMoved = true;
+                }
+            });
+            item.addEventListener('mouseup', (ev) => {
+                if (isInteractingWithResults && !pressMoved) {
+                    selectNode(node);
+                }
+                isInteractingWithResults = false;
+            });
+            item.addEventListener('mouseleave', () => {
+                if (isInteractingWithResults) {
+                    // user dragged away; treat as cancel
+                    isInteractingWithResults = false;
+                }
+            });
             item.addEventListener('mouseenter', () => {
                 // Clear previous selections
                 document.querySelectorAll('.search-result-item').forEach(el => {
@@ -913,12 +1034,15 @@ function showNodeInfo(node, _x, _y) {
     // Reset pan baseline
     popupOpenOffsetX = offsetX;
     popupOpenOffsetY = offsetY;
+    popupPanAccum = 0;
+    popupVisible = true;
 }
 
 function hideNodeInfo() {
     document.getElementById('nodeInfo').style.display = 'none';
     popupNodeRef = null;
     popupOpenScale = null;
+    popupVisible = false;
 }
 
 // Reset view to initial state

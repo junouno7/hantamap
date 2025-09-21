@@ -22,7 +22,7 @@ Hanta Map is a specialized navigation tool designed for the Hankook Tire Geumsan
 
 ![Hanta Map Preview](./hankook.png)
 
-Visit the live application: [Hanta Map](https://hanta.vercel.app)
+Visit the live application [here](https://hanta.vercel.app)
 
 ## 🛠️ Technology Stack
 
@@ -117,10 +117,10 @@ The application uses a JSON structure for node data:
 
 ## 🎯 Performance Features
 
-- **Canvas Rendering**: Hardware-accelerated graphics for smooth interaction
-- **Efficient Search**: Optimized search algorithms for large datasets
-- **Lazy Loading**: Progressive loading of map assets
-- **Memory Management**: Efficient handling of 950+ nodes
+- **Canvas Rendering**: Hardware-accelerated 2D graphics for smooth pan/zoom interactions
+- **Mipmap Caching**: Pre-rendered map images at multiple scales for optimized low-zoom performance
+- **Render Throttling**: RequestAnimationFrame-based rendering with input micro-batching for smooth scrolling
+- **Smart Search**: Fast substring matching with intelligent result prioritization and keyboard navigation
 
 ## 🔧 Configuration
 

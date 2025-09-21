@@ -1,2 +1,2 @@
-search move more gracefully, change favicon, speed optimize, 
+search move more gracefully, change favicon, speed optimize, blue ring top left corner
 

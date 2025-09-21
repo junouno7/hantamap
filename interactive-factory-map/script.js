@@ -104,6 +104,11 @@ async function init() {
         // Initial render
         requestAnimationFrame(render);
         
+        // Remove focus from any element to prevent blue focus ring on load
+        if (document.activeElement && document.activeElement.blur) {
+            document.activeElement.blur();
+        }
+        
         console.log('Factory map initialized successfully');
     } catch (error) {
         console.error('Failed to initialize map:', error);

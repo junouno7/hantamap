@@ -1148,7 +1148,7 @@ function render() {
     
     // More aggressive culling at high zoom levels to maintain performance
     let nodeCount = 0;
-    const maxNodes = scale > 1.5 ? 500 : scale > 1.0 ? 1000 : 2000;
+    const maxNodes = scale > 2.0 ? 250 : scale > 1.5 ? 550 : scale > 1.0 ? 750 : 960;
     
     nodes.forEach(node => {
         // Flip Y coordinate to match map orientation (nodes.json Y=0 at bottom, canvas Y=0 at top)

@@ -38,11 +38,25 @@
                 </div>
                 <div class="slider-row">
                     <label for="xOffset">X-Offset</label>
-                    <input type="range" id="xOffset" min="-2000" max="2000" value="0" step="1"><input type="number" id="xOffsetNum" min="-2000" max="2000" value="0" step="1">
+                    <input type="range" id="xOffset" min="-12000" max="12000" value="0" step="1"><input type="number" id="xOffsetNum" min="-12000" max="12000" value="0" step="1">
                 </div>
                 <div class="slider-row">
                     <label for="yOffset">Y-Offset</label>
-                    <input type="range" id="yOffset" min="-2000" max="2000" value="0" step="1"><input type="number" id="yOffsetNum" min="-2000" max="2000" value="0" step="1">
+                    <input type="range" id="yOffset" min="-12000" max="12000" value="0" step="1"><input type="number" id="yOffsetNum" min="-12000" max="12000" value="0" step="1">
+                </div>
+                <div class="offset-tools">
+                    <p class="offset-help">If scaled nodes are too high/low, use Y-Offset or nudge controls.</p>
+                    <div class="nudge-row">
+                        <label for="nudgeStep">Nudge step (px)</label>
+                        <input type="number" id="nudgeStep" min="1" value="100" step="1">
+                    </div>
+                    <div class="nudge-grid">
+                        <button id="nudgeUp" type="button">Up</button>
+                        <button id="nudgeLeft" type="button">Left</button>
+                        <button id="nudgeRight" type="button">Right</button>
+                        <button id="nudgeDown" type="button">Down</button>
+                    </div>
+                    <button id="autoCenterButton" type="button">Auto-Center Nodes</button>
                 </div>
                 <div class="flip-control">
                     <label><input type="checkbox" id="flipYCheckbox"> <strong>Flip Y-Axis</strong></label>

@@ -28,6 +28,15 @@ button:disabled { background-color: #c0c0c0; cursor: not-allowed; }
 .slider-row input[type="range"] { width: 100%; }
 .slider-row input[type="number"] { width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px; text-align: center; }
 
+.offset-tools { margin-top: 14px; padding: 10px; background: #fff; border: 1px solid #d7d7d7; border-radius: 4px; }
+.offset-help { margin: 0 0 10px; font-size: 0.86em; color: #444; }
+.nudge-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.nudge-row label { font-size: 0.88em; white-space: nowrap; }
+.nudge-row input { width: 90px; padding: 4px; border: 1px solid #ccc; border-radius: 3px; text-align: center; }
+.nudge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nudge-grid button { margin-top: 0; background-color: #17a2b8; }
+#autoCenterButton { background-color: #495057; }
+
 /* Flip checkbox */
 .flip-control { margin-top: 15px; padding: 10px; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px; }
 .flip-control label { display: flex; align-items: center; cursor: pointer; font-size: 0.95em; }

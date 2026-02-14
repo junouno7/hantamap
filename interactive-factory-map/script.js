@@ -12,6 +12,7 @@ let highlightedNodes = [];
 // Search UI state
 let currentSearchResults = [];
 let selectedResultIndex = -1;
+let debouncedSearch = null;
 // Track popup follow behavior
 let popupNodeRef = null;
 let popupOpenScale = null;
@@ -77,9 +78,33 @@ let lastWheelY = 0;
 let MIN_SCALE = 0.1; // Will be calculated based on map size
 const MAX_SCALE = 3;
 const ZOOM_SPEED = 0.045; // 2x faster for better responsiveness
+const HORIZONTAL_OVERPAN = 120; // allow slight overpan past left/right edges
 // Make markers ~15% larger (again)
 const NODE_RADIUS = 11; // 9.2 * 1.15 ≈ 10.58
 const HIGHLIGHTED_NODE_RADIUS = 17; // 13.8 * 1.15 ≈ 15.87
+
+function getDefaultStartScale() {
+    // Match one zoom-in click behavior (zoom() applies a 0.9 easing factor).
+    const oneClickDelta = ZOOM_SPEED * 0.9;
+    return Math.max(MIN_SCALE, Math.min(MAX_SCALE, MIN_SCALE + oneClickDelta));
+}
+
+function applyDefaultView() {
+    if (!mapImage || !canvas) return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const defaultScale = getDefaultStartScale();
+    const scaleRatio = defaultScale / MIN_SCALE;
+
+    scale = defaultScale;
+
+    // Keep horizontally centered, mimic one-click zoom-in around viewport center.
+    const scaledWidth = mapImage.naturalWidth * scale;
+    offsetX = (viewportWidth - scaledWidth) / 2;
+    offsetY = (viewportHeight / 2) * (1 - scaleRatio);
+
+    constrainPanning();
+}
 
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', init);
@@ -94,6 +119,9 @@ async function init() {
             loadMap(),
             loadNodes()
         ]);
+
+        // Precompute node render fields once after both map + nodes are available.
+        prepareNodesForRender();
         
         // Setup event listeners
         setupEventListeners();
@@ -124,19 +152,17 @@ async function loadMap() {
             scale = MIN_SCALE;
             
             console.log(`MIN_SCALE set to: ${MIN_SCALE}`);
-            
-            // Center horizontally at minimum scale
+
+            // Set canvas size
             const viewportWidth = window.innerWidth;
-            const scaledWidth = mapImage.naturalWidth * scale;
-            offsetX = (viewportWidth - scaledWidth) / 2;
-            offsetY = 0;
-            
+            canvas.width = viewportWidth;
+            canvas.height = viewportHeight;
+
             // Build mipmap-like cached canvases for smooth panning near min zoom
             buildMipCanvases();
 
-            // Set canvas size
-            canvas.width = viewportWidth;
-            canvas.height = viewportHeight;
+            // Default start view: one zoom-in click from MIN_SCALE.
+            applyDefaultView();
             
             resolve();
         };
@@ -226,6 +252,30 @@ async function loadNodes() {
     }
 }
 
+function prepareNodesForRender() {
+    if (!mapImage || !Array.isArray(nodes)) return;
+    const mapHeight = mapImage.naturalHeight;
+
+    nodes = nodes.map((node) => {
+        const rawX = Number(node.x);
+        const rawY = Number(node.y);
+        const x = Number.isFinite(rawX) ? rawX : 0;
+        const y = Number.isFinite(rawY) ? rawY : 0;
+        const description = typeof node.description === 'string' ? node.description : '';
+        const normalizedDesc = description.toLowerCase();
+
+        return {
+            ...node,
+            x,
+            y,
+            description,
+            _renderY: mapHeight - y,
+            _hasDescription: normalizedDesc.trim().length > 0,
+            _isCharging: normalizedDesc.includes('cs')
+        };
+    });
+}
+
 function setupEventListeners() {
     // Canvas mouse events
     canvas.addEventListener('mousedown', handleMouseDown);
@@ -263,9 +313,10 @@ function setupEventListeners() {
     // Search functionality
     const searchInput = document.getElementById('searchInput');
     const clearSearchBtn = document.getElementById('clearSearch');
+    debouncedSearch = debounce(handleSearch, 300);
     
     searchInput.addEventListener('input', (e) => {
-        debounce(handleSearch, 300)();
+        debouncedSearch();
         // Show/hide clear button based on input content
         toggleClearButton();
     });
@@ -329,8 +380,8 @@ function constrainPanning() {
     const scaledHeight = mapImage.naturalHeight * scale;
     
     // Calculate boundaries
-    const minOffsetX = Math.min(0, viewportWidth - scaledWidth);
-    const maxOffsetX = Math.max(0, viewportWidth - scaledWidth);
+    const minOffsetX = Math.min(0, viewportWidth - scaledWidth) - HORIZONTAL_OVERPAN;
+    const maxOffsetX = Math.max(0, viewportWidth - scaledWidth) + HORIZONTAL_OVERPAN;
     
     // Allow small amount of panning past top edge, bottom edge stays locked
     const topOverpan = 150; // Allow 150px of overpan past top edge
@@ -524,13 +575,11 @@ function handleTouchEnd(e) {
             const mapY = (y - offsetY) / scale;
             // Find tapped node (same logic as handleClick)
             const clickRadius = Math.max(NODE_RADIUS, 15) / scale;
+            const clickRadiusSq = clickRadius * clickRadius;
             const clickedNode = nodes.find(node => {
-                const flippedY = mapImage.naturalHeight - node.y;
-                const distance = Math.sqrt(
-                    Math.pow(node.x - mapX, 2) +
-                    Math.pow(flippedY - mapY, 2)
-                );
-                return distance < clickRadius;
+                const dx = node.x - mapX;
+                const dy = node._renderY - mapY;
+                return (dx * dx + dy * dy) < clickRadiusSq;
             });
             if (clickedNode) {
                 showNodeInfo(clickedNode, t.clientX, t.clientY);
@@ -625,6 +674,9 @@ function zoom(delta, centerX = canvas.width / 2, centerY = canvas.height / 2) {
 
 // Throttled render function to prevent excessive rendering
 function throttledRender() {
+    // When beacon animation loop is active, it already renders every frame.
+    // Skip extra scheduled renders to avoid redundant draw work.
+    if (animationId) return;
     if (!renderRequested) {
         renderRequested = true;
         requestAnimationFrame(() => {
@@ -652,14 +704,11 @@ function handleClick(e) {
     
     // Find clicked node
     const clickRadius = Math.max(NODE_RADIUS, 15) / scale; // Minimum click area
+    const clickRadiusSq = clickRadius * clickRadius;
     const clickedNode = nodes.find(node => {
-        // Flip Y coordinate to match rendering
-        const flippedY = mapImage.naturalHeight - node.y;
-        const distance = Math.sqrt(
-            Math.pow(node.x - mapX, 2) + 
-            Math.pow(flippedY - mapY, 2)
-        );
-        return distance < clickRadius;
+        const dx = node.x - mapX;
+        const dy = node._renderY - mapY;
+        return (dx * dx + dy * dy) < clickRadiusSq;
     });
     
     if (clickedNode) {
@@ -953,8 +1002,8 @@ function selectNode(node) {
     beaconNodeId = null; // Clear search beacon, selected node will have its own beacon
     startAnimationLoop(); // Start animation for selected node beacon
     
-    // Calculate target scale for good visibility
-    const targetScale = Math.min(1.5, MAX_SCALE);
+    // Use a lower zoom target when navigating from search selection.
+    const targetScale = Math.min(0.5, MAX_SCALE);
     const animationDuration = 500; // ms
     const startTime = performance.now();
     const startScale = scale;
@@ -962,9 +1011,8 @@ function selectNode(node) {
     const startY = offsetY;
     
     // Target position (center the node) - use flipped Y coordinate
-    const flippedY = mapImage.naturalHeight - node.y;
     const targetX = canvas.width / 2 - node.x * targetScale;
-    const targetY = canvas.height / 2 - flippedY * targetScale;
+    const targetY = canvas.height / 2 - node._renderY * targetScale;
     
     // Animate to the node
     function animate(currentTime) {
@@ -1015,9 +1063,8 @@ function showNodeInfo(node, _x, _y) {
     const popupHeight = nodeInfo.offsetHeight || 80;
     
     // Compute node screen coordinates (always from node, not click position)
-    const flippedY = mapImage.naturalHeight - node.y;
     const screenX = node.x * scale + offsetX;
-    const screenY = flippedY * scale + offsetY;
+    const screenY = node._renderY * scale + offsetY;
     
     // Position at top-right of the node
     const margin = 8;
@@ -1049,16 +1096,8 @@ function hideNodeInfo() {
 
 // Reset view to initial state
 function resetView() {
-    // Reset to minimum scale (map fills screen height)
-    scale = MIN_SCALE;
-    
-    const viewportWidth = window.innerWidth;
-    const scaledWidth = mapImage.naturalWidth * scale;
-    offsetX = (viewportWidth - scaledWidth) / 2;
-    offsetY = 0;
-    
-    // Apply boundary constraints
-    constrainPanning();
+    // Reset to the default initial view (one-click zoom in from MIN_SCALE).
+    applyDefaultView();
     
     // Clear selections and highlights
     highlightedNodes = [];
@@ -1088,14 +1127,10 @@ function handleResize() {
         
         // If current scale is below new minimum, reset to minimum
         if (scale < MIN_SCALE) {
-            scale = MIN_SCALE;
-            // Recenter the map
-            const viewportWidth = window.innerWidth;
-            const scaledWidth = mapImage.naturalWidth * scale;
-            offsetX = (viewportWidth - scaledWidth) / 2;
-            offsetY = 0;
             // Rebuild mip caches when MIN_SCALE changes
             buildMipCanvases();
+            // Keep reset behavior consistent with initial load.
+            applyDefaultView();
         } else {
             // Adjust offset to maintain the relative position
             const widthRatio = canvas.width / oldWidth;
@@ -1118,6 +1153,12 @@ function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     if (!mapImage) return;
+
+    // Compute viewport bounds in map coordinates once per frame.
+    const visibleLeft = -offsetX / scale;
+    const visibleTop = -offsetY / scale;
+    const visibleRight = visibleLeft + canvas.width / scale;
+    const visibleBottom = visibleTop + canvas.height / scale;
     
     // Save context state
     ctx.save();
@@ -1126,22 +1167,44 @@ function render() {
     ctx.translate(offsetX, offsetY);
     ctx.scale(scale, scale);
     
-    // Draw map image using nearest cached mip level when near min zoom
+    // Draw only the currently visible map region for smoother pan/zoom.
+    const sourcePadding = 2 / Math.max(scale, 0.001);
+    const sourceX = Math.max(0, visibleLeft - sourcePadding);
+    const sourceY = Math.max(0, visibleTop - sourcePadding);
+    const sourceRight = Math.min(mapImage.naturalWidth, visibleRight + sourcePadding);
+    const sourceBottom = Math.min(mapImage.naturalHeight, visibleBottom + sourcePadding);
+    const sourceW = sourceRight - sourceX;
+    const sourceH = sourceBottom - sourceY;
+
     const mip = pickMipForScale(scale);
-    if (mip) {
-        const inv = 1 / mip.scale; // counter our ctx.scale(scale)
-        ctx.scale(inv, inv);
-        ctx.drawImage(mip.canvas, 0, 0);
-        ctx.scale(mip.scale, mip.scale);
-    } else {
-        ctx.drawImage(mapImage, 0, 0);
+    if (sourceW > 0 && sourceH > 0) {
+        if (mip) {
+            const mipScale = mip.scale;
+            ctx.drawImage(
+                mip.canvas,
+                sourceX * mipScale,
+                sourceY * mipScale,
+                sourceW * mipScale,
+                sourceH * mipScale,
+                sourceX,
+                sourceY,
+                sourceW,
+                sourceH
+            );
+        } else {
+            ctx.drawImage(
+                mapImage,
+                sourceX,
+                sourceY,
+                sourceW,
+                sourceH,
+                sourceX,
+                sourceY,
+                sourceW,
+                sourceH
+            );
+        }
     }
-    
-    // Calculate visible bounds for optimization
-    const visibleLeft = -offsetX / scale;
-    const visibleTop = -offsetY / scale;
-    const visibleRight = visibleLeft + canvas.width / scale;
-    const visibleBottom = visibleTop + canvas.height / scale;
     
     // Draw nodes (only visible ones for performance)
     const renderRadius = Math.max(NODE_RADIUS, HIGHLIGHTED_NODE_RADIUS) * 2;
@@ -1149,29 +1212,31 @@ function render() {
     // More aggressive culling at high zoom levels to maintain performance
     let nodeCount = 0;
     const maxNodes = scale > 2.0 ? 250 : scale > 1.5 ? 550 : scale > 1.0 ? 750 : 960;
-    
-    nodes.forEach(node => {
-        // Flip Y coordinate to match map orientation (nodes.json Y=0 at bottom, canvas Y=0 at top)
-        const flippedY = mapImage.naturalHeight - node.y;
-        
-        // Skip nodes outside visible area (using flipped Y)
+
+    const singleHighlightedNode = highlightedNodes.length === 1 ? highlightedNodes[0] : null;
+
+    for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const renderY = node._renderY;
+
+        // Skip nodes outside visible area.
         if (node.x < visibleLeft - renderRadius || 
             node.x > visibleRight + renderRadius ||
-            flippedY < visibleTop - renderRadius || 
-            flippedY > visibleBottom + renderRadius) {
-            return;
+            renderY < visibleTop - renderRadius || 
+            renderY > visibleBottom + renderRadius) {
+            continue;
         }
-        
-        // Limit total nodes rendered to prevent performance issues
-        if (nodeCount++ > maxNodes) {
-            return;
+
+        // Limit total nodes rendered to prevent performance issues.
+        if (nodeCount >= maxNodes) {
+            break;
         }
-        
-        const isHighlighted = highlightedNodes.includes(node);
+        nodeCount += 1;
+
+        const isHighlighted = singleHighlightedNode ? singleHighlightedNode === node : highlightedNodes.includes(node);
         const isSelected = node === selectedNode;
-        const descText = (node.description || '').toLowerCase();
-        const hasDescription = descText.trim().length > 0;
-        const isCharging = descText.includes('cs');
+        const hasDescription = node._hasDescription;
+        const isCharging = node._isCharging;
         // Neon-like colors
         const colorDesc = '#ff1744';   // bright red for nodes with description (Docking Point)
         const colorNoDesc = '#39ff14'; // neon green for nodes without description (Road)
@@ -1180,7 +1245,7 @@ function render() {
         ctx.beginPath();
         ctx.arc(
             node.x,
-            flippedY,
+            renderY,
             isSelected || (beaconNodeId && node.id === beaconNodeId) || isHighlighted ? HIGHLIGHTED_NODE_RADIUS : NODE_RADIUS,
             0,
             Math.PI * 2
@@ -1219,7 +1284,7 @@ function render() {
                 const alpha = 0.5 * (1 - phase); // More visible
                 
                 ctx.beginPath();
-                ctx.arc(node.x, flippedY, pulseRadius, 0, Math.PI * 2);
+                ctx.arc(node.x, renderY, pulseRadius, 0, Math.PI * 2);
                 ctx.strokeStyle = isSelected ? 
                     `rgba(255, 111, 0, ${alpha.toFixed(3)})` : // Orange for selected
                     `rgba(0, 150, 255, ${alpha.toFixed(3)})`; // Bright blue for search
@@ -1227,7 +1292,7 @@ function render() {
                 ctx.stroke();
             }
         }
-    });
+    }
     
     // Restore context state
     ctx.restore();

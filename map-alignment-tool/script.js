@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- IMPORTANT: Use your specific map dimensions here ---
-    const mapWidth = 19933;
-    const mapHeight = 6042;
+    // Map dimensions for the latest hantafinal.png
+    const mapWidth = 11575;
+    const mapHeight = 8185;
 
     // --- DOM Elements ---
     const fileInput = document.getElementById('jsonFile');
@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const flipYCheckbox = document.getElementById('flipYCheckbox');
     const multiSelectButton = document.getElementById('multiSelectButton');
     const clearSelectButton = document.getElementById('clearSelectButton');
+    const nudgeStepInput = document.getElementById('nudgeStep');
+    const nudgeUpButton = document.getElementById('nudgeUp');
+    const nudgeLeftButton = document.getElementById('nudgeLeft');
+    const nudgeRightButton = document.getElementById('nudgeRight');
+    const nudgeDownButton = document.getElementById('nudgeDown');
+    const autoCenterButton = document.getElementById('autoCenterButton');
 
     const controls = {
         xScale: { slider: document.getElementById('xScale'), num: document.getElementById('xScaleNum') },
@@ -41,8 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyTransformations() {
         const xS = parseFloat(controls.xScale.num.value);
         const yS = parseFloat(controls.yScale.num.value);
-        const xO = parseInt(controls.xOffset.num.value);
-        const yO = parseInt(controls.yOffset.num.value);
+        const xO = Number(controls.xOffset.num.value);
+        const yO = Number(controls.yOffset.num.value);
         const isYFlipped = flipYCheckbox.checked;
 
         transformedNodes = originalNodes.map(node => {
@@ -57,6 +63,95 @@ document.addEventListener('DOMContentLoaded', () => {
             return { ...node, x: newX, y: newY };
         });
         updateJsonOutput();
+    }
+
+    function getStepPrecision(stepValue) {
+        const stepText = String(stepValue || '1');
+        if (stepText.includes('e-')) {
+            const exp = stepText.split('e-')[1];
+            const p = Number(exp);
+            return Number.isFinite(p) ? p : 0;
+        }
+        const parts = stepText.split('.');
+        return parts.length > 1 ? parts[1].length : 0;
+    }
+
+    function setControlValue(control, value) {
+        const min = Number(control.slider.min);
+        const max = Number(control.slider.max);
+        const step = Number(control.slider.step || 1);
+        const safeValue = Number.isFinite(value) ? value : Number(control.slider.value);
+
+        let clamped = Math.max(min, Math.min(max, safeValue));
+        if (Number.isFinite(step) && step > 0) {
+            const snapped = min + Math.round((clamped - min) / step) * step;
+            clamped = Math.max(min, Math.min(max, snapped));
+            const precision = getStepPrecision(step);
+            clamped = Number(clamped.toFixed(precision));
+        }
+
+        control.slider.value = String(clamped);
+        control.num.value = String(clamped);
+        return clamped;
+    }
+
+    function getNudgeStep() {
+        const step = Math.round(Number(nudgeStepInput.value));
+        if (!Number.isFinite(step) || step < 1) {
+            nudgeStepInput.value = '100';
+            return 100;
+        }
+        return step;
+    }
+
+    function nudgeOffsets(deltaX, deltaY) {
+        const currentX = Number(controls.xOffset.num.value) || 0;
+        const currentY = Number(controls.yOffset.num.value) || 0;
+        setControlValue(controls.xOffset, currentX + deltaX);
+        setControlValue(controls.yOffset, currentY + deltaY);
+        applyTransformations();
+    }
+
+    function autoCenterNodes() {
+        if (!originalNodes.length) {
+            alert('Upload nodes.json first.');
+            return;
+        }
+
+        const xS = parseFloat(controls.xScale.num.value);
+        const yS = parseFloat(controls.yScale.num.value);
+        const xO = Number(controls.xOffset.num.value);
+        const yO = Number(controls.yOffset.num.value);
+        const isYFlipped = flipYCheckbox.checked;
+
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+
+        originalNodes.forEach((node) => {
+            const baseY = isYFlipped ? (mapHeight - node.y) : node.y;
+            const newX = (node.x * xS) + xO;
+            const newY = (baseY * yS) + yO;
+            minX = Math.min(minX, newX);
+            maxX = Math.max(maxX, newX);
+            minY = Math.min(minY, newY);
+            maxY = Math.max(maxY, newY);
+        });
+
+        if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+            alert('Unable to center nodes. Check node data.');
+            return;
+        }
+
+        const nodesCenterX = (minX + maxX) / 2;
+        const nodesCenterY = (minY + maxY) / 2;
+        const mapCenterX = mapWidth / 2;
+        const mapCenterY = mapHeight / 2;
+
+        const deltaX = mapCenterX - nodesCenterX;
+        const deltaY = mapCenterY - nodesCenterY;
+        nudgeOffsets(deltaX, deltaY);
     }
 
     /**
@@ -130,8 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const allControlValues = {
                 xS: parseFloat(controls.xScale.num.value),
                 yS: parseFloat(controls.yScale.num.value),
-                xO: parseInt(controls.xOffset.num.value),
-                yO: parseInt(controls.yOffset.num.value),
+                xO: Number(controls.xOffset.num.value),
+                yO: Number(controls.yOffset.num.value),
                 isYFlipped: flipYCheckbox.checked
             };
 
@@ -212,8 +307,35 @@ document.addEventListener('DOMContentLoaded', () => {
     for (const key in controls) {
         const { slider, num } = controls[key];
         slider.addEventListener('input', () => { num.value = slider.value; applyTransformations(); });
-        num.addEventListener('input', () => { slider.value = num.value; applyTransformations(); });
+        num.addEventListener('input', () => {
+            const raw = num.value.trim();
+            if (raw === '' || raw === '-' || raw === '.' || raw === '-.') return;
+            const value = Number(raw);
+            if (!Number.isFinite(value)) return;
+            setControlValue(controls[key], value);
+            applyTransformations();
+        });
+        num.addEventListener('blur', () => {
+            const raw = num.value.trim();
+            if (raw === '' || raw === '-' || raw === '.' || raw === '-.') {
+                num.value = slider.value;
+                return;
+            }
+            const value = Number(raw);
+            if (!Number.isFinite(value)) {
+                num.value = slider.value;
+                return;
+            }
+            setControlValue(controls[key], value);
+            applyTransformations();
+        });
     }
+
+    nudgeUpButton.addEventListener('click', () => nudgeOffsets(0, -getNudgeStep()));
+    nudgeDownButton.addEventListener('click', () => nudgeOffsets(0, getNudgeStep()));
+    nudgeLeftButton.addEventListener('click', () => nudgeOffsets(-getNudgeStep(), 0));
+    nudgeRightButton.addEventListener('click', () => nudgeOffsets(getNudgeStep(), 0));
+    autoCenterButton.addEventListener('click', autoCenterNodes);
     
     map.on('click', (event) => {
         if (isMultiSelectMode) return; // Don't add nodes in multi-select mode
@@ -223,8 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const xS = parseFloat(controls.xScale.num.value);
         const yS = parseFloat(controls.yScale.num.value);
-        const xO = parseInt(controls.xOffset.num.value);
-        const yO = parseInt(controls.yOffset.num.value);
+        const xO = Number(controls.xOffset.num.value);
+        const yO = Number(controls.yOffset.num.value);
         const isYFlipped = flipYCheckbox.checked;
         
         const originalX = (pos.lng - xO) / xS;

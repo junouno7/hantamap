@@ -4,7 +4,7 @@ An interactive factory floor map for Hankook Tire's Geumsan Factory. This web ap
 
 ## 🏭 Overview
 
-Hanta Map is a specialized navigation tool designed for the Hankook Tire Geumsan Factory (한국타이어 금산공장). It displays an interactive map with over 950+ RFID nodes, enabling efficient navigation and location tracking within the factory environment.
+Hanta Map is a specialized navigation tool designed for the Hankook Tire Geumsan Factory (한국타이어 금산공장). It displays an interactive map with over 1000 RFID nodes, enabling efficient navigation and location tracking within the factory environment.
 
 ## ✨ Features
 
@@ -19,8 +19,6 @@ Hanta Map is a specialized navigation tool designed for the Hankook Tire Geumsan
 - **Responsive Design**: Works on desktop and mobile devices
 
 ## 🚀 Demo
-
-![Hanta Map Preview](./hankook.png)
 
 Visit the live application [here](https://hanta.vercel.app)
 
@@ -54,16 +52,15 @@ Visit the live application [here](https://hanta.vercel.app)
 
 ```
 hantamap/
-├── interactive-factory-map/     # Main application
-│   ├── index.html              # Main HTML file
-│   ├── script.js               # Core JavaScript functionality
-│   ├── style.css               # Styling and theme
-│   ├── nodes.json              # RFID node data (950+ nodes)
-│   ├── factory-map.png         # Factory floor plan image
-│   ├── hankook.webp           # hankook logo
-│   └── vercel.json            # Deployment configuration
-├── map-alignment-tool/          # Development utility
-└── allnodes.json               # Complete node dataset
+├── interactive-factory-map/
+│   ├── index.html
+│   ├── script.js
+│   ├── style.css
+│   ├── nodes.json
+│   ├── factory-map.png
+│   ├── hankook.webp
+│   └── vercel.json
+└── README.md
 ```
 
 ## 🚀 Local Development

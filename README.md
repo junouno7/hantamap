@@ -20,7 +20,7 @@ Hanta Map is a specialized navigation tool designed for the Hankook Tire Geumsan
 
 ## 🚀 Demo
 
-Visit the live application [here](https://hanta.vercel.app)
+Visit the live application [here](https://hanta123.vercel.app)
 
 ## 🛠️ Technology Stack
 
